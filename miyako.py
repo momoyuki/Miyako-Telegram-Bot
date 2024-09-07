@@ -6,61 +6,62 @@ from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, fil
 async def start(update: Update, context: CallbackContext):
     await update.message.reply_text('พร้อมรับใช้แล้วค่ะ!')
 
+REPLACEMENT_URLS = {
+    'x.com': 'fixupx.com',
+    'twitter.com': 'fxtwitter.com',
+    'pixiv.net': 'pixivview.net'  # ตัวอย่างลิงก์ที่แก้ไขสำหรับ pixiv
+}
+
+link_pattern = re.compile(r'(x|twitter|pixiv)\s*\.\s*(c\s*o\s*m|net|\(\s*c\s*o\s*m\s*\))', flags=re.IGNORECASE)
+
+def replace_url(url, message):
+    return message.replace(url, REPLACEMENT_URLS.get(url, url))
+
+def detect_and_replace_links(message):
+    # จับลิงก์ที่มีรูปแบบต่างๆ และแทนที่
+    message = re.sub(link_pattern, r'\1.com', message)
+    for url in REPLACEMENT_URLS.keys():
+        message = replace_url(url, message)
+
+    # จัดการลิงก์กรณีมีช่องว่างหลัง .com
+    message = re.sub(r'(x.com|twitter.com|pixiv.net)\s+', r'\1', message)
+    
+    return message
+
+def should_notify_owner(message):
+    # เพิ่มเงื่อนไขการแจ้งเตือนเฉพาะกรณี
+    return 'x.com' in message or 'twitter.com' in message or 'pixiv.net' in message
+
+# ฟังก์ชันตรวจจับ @username และจัดการช่องว่าง
+def fix_username_mentions(message):
+    # แทนที่ช่องว่างหลัง @ ให้เป็นลิงก์ที่ถูกต้อง
+    return re.sub(r'@\s*(\w+)', r'https://x.com/\1', message)
+
 # ฟังก์ชันตรวจจับลิงก์และแก้ไข
 async def handle_message(update: Update, context: CallbackContext):
-    # รับข้อความจากผู้ใช้
     user_message = update.message.text
-    
-    # แก้ไขลิงก์ที่มีช่องว่างระหว่างตัวอักษร c, o, m และวงเล็บ
-    fixed_message = re.sub(r'x\s*\.\s*\(\s*c\s*o\s*m\s*\)', 'x.com', user_message, flags=re.IGNORECASE)
-    fixed_message = re.sub(r'x\s*\.\s*c\s*\s*o\s*\s*m', 'x.com', fixed_message, flags=re.IGNORECASE)
-    fixed_message = re.sub(r'twitter\s*\.\s*\(\s*c\s*o\s*m\s*\)', 'twitter.com', fixed_message, flags=re.IGNORECASE)
-    fixed_message = re.sub(r'twitter\s*\.\s*c\s*\s*o\s*\s*m', 'twitter.com', fixed_message, flags=re.IGNORECASE)
 
-    # แก้ไขลิงก์ที่มีช่องว่างระหว่าง . และ com พร้อมกับ path
-    fixed_message = re.sub(r'https://\s*x\s*\.\s*\(\s*c\s*o\s*m\s*\)', 'https://x.com', fixed_message, flags=re.IGNORECASE)
-    fixed_message = re.sub(r'https://\s*x\s*\.\s*c\s*\s*o\s*\s*m', 'https://x.com', fixed_message, flags=re.IGNORECASE)
-    fixed_message = re.sub(r'https://\s*twitter\s*\.\s*\(\s*c\s*o\s*m\s*\)', 'https://twitter.com', fixed_message, flags=re.IGNORECASE)
-    fixed_message = re.sub(r'https://\s*twitter\s*\.\s*c\s*\s*o\s*\s*m', 'https://twitter.com', fixed_message, flags=re.IGNORECASE)
-    
-    # แก้ไขลิงก์ที่มีช่องว่างหลัง .com
-    fixed_message = re.sub(r'(x.com)\s+', r'\1', fixed_message)
-    fixed_message = re.sub(r'(twitter.com)\s+', r'\1', fixed_message)
+    try:
+        # แก้ไขลิงก์ที่พบในข้อความ
+        fixed_message = detect_and_replace_links(user_message)
 
-    # แก้ไขลิงก์ที่ไม่มี https://
-    fixed_message = re.sub(r'x\s*\.\s*\(\s*c\s*o\s*m\s*\)', 'x.com', fixed_message, flags=re.IGNORECASE)
-    fixed_message = re.sub(r'x\s*\.\s*c\s*\s*o\s*\s*m', 'x.com', fixed_message, flags=re.IGNORECASE)
-    fixed_message = re.sub(r'twitter\s*\.\s*\(\s*c\s*o\s*m\s*\)', 'twitter.com', fixed_message, flags=re.IGNORECASE)
-    fixed_message = re.sub(r'twitter\s*\.\s*c\s*\s*o\s*\s*m', 'twitter.com', fixed_message, flags=re.IGNORECASE)
+        # ตรวจจับและแก้ไข @username
+        fixed_message = fix_username_mentions(fixed_message)
 
-    # ตรวจสอบว่ามี 'x.com' หรือ 'twitter.com' ในข้อความหรือไม่
-    if 'x.com' in fixed_message:
-        # แทนที่ลิงก์ x.com ด้วย fixupx.com
-        fixed_message = fixed_message.replace('x.com', 'fixupx.com')
-        await update.message.reply_text(f'เป้าหมายของคุณคือ: {fixed_message}')
-        # ส่งข้อความไปยังผู้สร้าง
-        await context.bot.send_message(chat_id=BOT_OWNER_ID, text=f'ตรวจพบลิงก์ x.com ในข้อความ: {fixed_message}')
-    elif 'twitter.com' in fixed_message:
-        # แทนที่ลิงก์ twitter.com ด้วย fxtwitter.com
-        fixed_message = fixed_message.replace('twitter.com', 'fxtwitter.com')
-        await update.message.reply_text(f'เป้าหมายของคุณคือ: {fixed_message}')
-        # ส่งข้อความไปยังผู้สร้าง
-        await context.bot.send_message(chat_id=BOT_OWNER_ID, text=f'ตรวจพบลิงก์ twitter.com ในข้อความ: {fixed_message}')
-    elif re.search(r'@(\w+)', fixed_message):
-        # แปลงข้อความจาก @{...} เป็น x.com/...
-        fixed_message = re.sub(r'@(\w+)', r'https://x.com/\1', fixed_message)
-        await update.message.reply_text(f'เป้าหมายของคุณคือ : {fixed_message}')
-        # ส่งข้อความไปยังผู้สร้าง
-        await context.bot.send_message(chat_id=BOT_OWNER_ID, text=f'ตรวจพบ @username ในข้อความ: {fixed_message}')
-    else:
-        # ตอบกลับเมื่อไม่พบลิงก์หรือ @
-        await update.message.reply_text('ด้วยความยินดีค่ะ')
-        await context.bot.send_message(chat_id=BOT_OWNER_ID, text=f'{update.effective_user.first_name} : {user_message}')
+        if 'x.com' in fixed_message or 'twitter.com' in fixed_message or 'pixiv.net' in fixed_message:
+            await update.message.reply_text(f'เป้าหมายของคุณคือ: {fixed_message}')
+            if should_notify_owner(fixed_message):
+                await context.bot.send_message(chat_id=BOT_OWNER_ID, text=f'ตรวจพบลิงก์ในข้อความ: {fixed_message}')
+        else:
+            await update.message.reply_text('ด้วยความยินดีค่ะ')
+            await context.bot.send_message(chat_id=BOT_OWNER_ID, text=f'{update.effective_user.first_name} : {user_message}')
+    except Exception as e:
+        await update.message.reply_text(f'เกิดข้อผิดพลาด: {str(e)}')
 
 # ใส่ API Token ของคุณที่นี่
 TOKEN = 'YOUR_REAL_BOT_API_TOKEN'
-# ใส่ ID ของผู้สร้างบอทที่นี่
 BOT_OWNER_ID = 'YOUR_BOT_OWNER_ID'
+
 
 # สร้างแอปพลิเคชันบอท
 app = ApplicationBuilder().token(TOKEN).build()
