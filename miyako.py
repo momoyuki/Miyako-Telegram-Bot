@@ -1,3 +1,4 @@
+import re
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters
 
@@ -19,8 +20,12 @@ async def handle_message(update: Update, context):
         # แทนที่ลิงก์ twitter.com ด้วย fxtwitter.com
         fixed_message = user_message.replace('twitter.com', 'fxtwitter.com')
         await update.message.reply_text(f'ลิงก์ใหม่ของคุณคือ: {fixed_message}')
+    elif re.search(r'@(\w+)', user_message):
+        # แปลงข้อความจาก @{...} เป็น x.com/...
+        fixed_message = re.sub(r'@(\w+)', r'https://x.com/\1', user_message)
+        await update.message.reply_text(f'เป้าหมายของคุณคือ : {fixed_message}')
+    
     else:
-        # ถ้าไม่มีลิงก์ที่ต้องการแก้ไข
         await update.message.reply_text('ไม่มีลิงก์ที่ต้องแก้ไขในข้อความของคุณ')
 
 # ใส่ API Token ของคุณที่นี่
