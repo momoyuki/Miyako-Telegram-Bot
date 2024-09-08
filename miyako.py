@@ -38,7 +38,6 @@ def fixup_link(text):
     text = re.sub(r'(https?://)\s+', r'\1', text)
     text = re.sub(r'(https?://)\s*([a-zA-Z0-9.-]+)\s*\.\s*([a-zA-Z]{2,})', r'\1\2.\3', text)
 
-
     # ตรวจสอบว่ามีลิงก์ fixupx.com หรือ fxtwitter.com แล้วหรือไม่
     if 'fixupx.com' in text or 'fxtwitter.com' in text:
         return text  # ไม่ต้องทำอะไรถ้าพบลิงก์ที่ถูกแก้แล้ว
@@ -48,15 +47,15 @@ def fixup_link(text):
     text = re.sub(r'www\s*\.\s*twitter\s*\.\s*com\s*/\s*', r'www.twitter.com/', text, flags=re.IGNORECASE)
     text = re.sub(r'www\s*\.\s*x\s*\.\s*com\s*/\s*', r'www.x.com/', text, flags=re.IGNORECASE)
     
-   # ลบข้อความหน้าลิงก์ที่เริ่มต้นด้วย 'http' เช่น schttps://...
-    text = re.sub(r'\S*?(https?://\S+)', r'\1', text)
-
     # ซ่อมลิงก์ pixiv.net
     text = re.sub(r'pixiv\s*\.\s*net\s*/\s*', r'pixiv.net/', text, flags=re.IGNORECASE)
     text = re.sub(r'www\s*\.\s*pixiv\s*\.\s*net\s*/\s*', r'www.pixiv.net/', text, flags=re.IGNORECASE)
+    text = re.sub(r'(artworks)\s*[-:/|\s]+\s*(\d+)',handle_artwork,text)
 
     # ซ่อมลิงก์ที่เกี่ยวข้องกับ artworks
     text = re.sub(r"(https?://)?(www\.)?pixiv\.net/en/artworks/(\d+)", r"https://www.pixiv.net/en/artworks/\3", text, flags=re.IGNORECASE)
+
+    text = re.sub(r'(\w+)\s*/?\s*(status)\s*/?\s*(\d+)',handle_tx,text)
 
     # ทำเป็นอีกฟังก์ชั่น
     # แทนที่ลิงก์ x.com และ twitter.com ด้วย fixupx.com และ fxtwitter.com
@@ -64,23 +63,32 @@ def fixup_link(text):
     text = re.sub(r'(https?://)?(twitter\.com)', r'\1fxtwitter.com', text)
     # จัดการกับ @username แก้โดยดัก @ถ้าเจอ แทนที่ด้วยลิงก์
     
-    text = re.sub(r'@\s*:\s*(\w+)', handle_username_1, text)
-    text = re.sub(r'(@\s*|@\s*)(\w+)', handle_username_2, text)
-   
+    text = re.sub(r'@(\w+)', handle_username, text)
+    text = re.sub(r'(x|twitter|@)(\s*[-:|\s]+\s*)(\w+)', handle_username_tx, text)
 
+   
     # text = re.sub(r'(?:@|X|Twitter)\s*:\s*(\w+)', handle_username, text, flags=re.IGNORECASE)
 
     return text
 
+def handle_artwork(match):
+    artworks_id = match.group(2).strip()
+    return f"https://www.pixiv.net/en/artworks/{artworks_id}"
+
+def handle_tx(match):
+    username = match.group(1).strip()
+    status_id = match.group(3).strip()
+    return f"@{username} https://x.com/{username}/status/{status_id}"
+
  # จัดการกับ @username
-def handle_username_2(match):
-    username = match.group(2).strip()
+def handle_username_tx(match):
+    username = match.group(3).strip()
     if username.lower() == BOT_NAME:
         return f"@{username}"
     platform = random.choice(["x", "twitter"])
     return f"@{username} [{platform}.com/{username}]"
 
-def handle_username_1(match):
+def handle_username(match):
     username = match.group(1).strip()
     if username.lower() == BOT_NAME:
         return f"@{username}"
