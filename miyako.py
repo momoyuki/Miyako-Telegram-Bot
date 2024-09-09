@@ -163,9 +163,9 @@ async def handle_group_message(update: Update, context: CallbackContext) -> None
             await fixup_command(update, context)
         elif user_message.startswith(f'/link@{BOT_NAME}') or user_message.startswith('/link'):
             await link_command(update, context)
-        else:
-            # ข้อความที่ไม่ได้ใช้คำสั่ง
-            logger.info(f'{update.effective_user.first_name} ส่งข้อความที่ไม่ใช่คำสั่ง: {user_message}')
+        # else:
+        #     # ข้อความที่ไม่ได้ใช้คำสั่ง
+        #     logger.info(f'{update.effective_user.first_name} ส่งข้อความที่ไม่ใช่คำสั่ง: {user_message}')
 
 async def repot_bug_command(update: Update, context: CallbackContext):
     if update.message and update.message.text:
