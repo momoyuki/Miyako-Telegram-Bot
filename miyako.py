@@ -30,24 +30,21 @@ def fixup_link(text):
     # ลบช่องว่างระหว่าง protocol และ domain
     text = re.sub(r'(https?://)\s+', r'\1', text)
 
-    # ตรวจสอบว่ามีลิงก์ fixupx.com หรือ fxtwitter.com แล้วหรือไม่
-    if 'fixupx.com' in text or 'fxtwitter.com' in text:
-        return text  # ไม่ต้องทำอะไรถ้าพบลิงก์ที่ถูกแก้แล้ว
-    
     # ซ่อมลิงก์ x.com และ twitter.com
     text = re.sub(r'(x|twitter)\s*\.\s*com\s*/\s*', r'\1.com/', text, flags=re.IGNORECASE)
     text = re.sub(r'www\s*\.\s*twitter\s*\.\s*com\s*/\s*', r'www.twitter.com/', text, flags=re.IGNORECASE)
     text = re.sub(r'www\s*\.\s*x\s*\.\s*com\s*/\s*', r'www.x.com/', text, flags=re.IGNORECASE)
     
-
     # ซ่อมลิงก์ pixiv.net
     text = re.sub(r'pixiv\s*\.\s*net\s*/\s*', r'pixiv.net/', text, flags=re.IGNORECASE)
     text = re.sub(r'www\s*\.\s*pixiv\s*\.\s*net\s*/\s*', r'www.pixiv.net/', text, flags=re.IGNORECASE)
     
-    
-
     # ซ่อมลิงก์ที่เกี่ยวข้องกับ artworks
     text = re.sub(r"(https?://)?(www\.)?pixiv\.net/en/artworks/(\d+)", r"https://www.pixiv.net/en/artworks/\3", text, flags=re.IGNORECASE)
+
+  # ตรวจสอบว่ามีลิงก์ fixupx.com หรือ fxtwitter.com แล้วหรือไม่
+    if 'fixupx.com' in text or 'fxtwitter.com' in text:
+        return text  # ไม่ต้องทำอะไรถ้าพบลิงก์ที่ถูกแก้แล้ว
 
     # แทนที่ลิงก์ x.com และ twitter.com ด้วย fixupx.com และ fxtwitter.com
     text = re.sub(r'(https?://)?(x\.com)', r'\1fixupx.com', text)
