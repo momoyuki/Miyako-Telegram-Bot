@@ -61,7 +61,7 @@ def fixup_link(text):
 
 def only_plain_text(text):
     #TODO แก้บัค กรณี หลุดเซ็ตอื่น
-    text = re.sub(r'(artworks)\s*[-:/|\s]+\s*(\d+)', handle_artwork, text) 
+    text = re.sub(r'(artworks)\s*[-:\/|\s]+\s*(\d+)', handle_artwork, text) 
     text = re.sub(r'(\w+)\s*/?\s*(status)\s*/?\s*(\d+)', handle_tx, text)
     return text
 
@@ -72,7 +72,7 @@ def clear_whitespace(text):
 # จัดการกับ Pixiv artworks #TODO แก้บัค กรณี หลุดเซ็ตอื่น
 def handle_artwork(match):
     artworks_id = match.group(2).strip()
-    return f"https://www.pixiv.net/en/artworks/{artworks_id}"
+    return f"Pixiv: https://www.pixiv.net/en/artworks/{artworks_id}"
 
 # จัดการกับ Twitter และ X status #TODO แก้บัค กรณี หลุดเซ็ตอื่น
 def handle_tx(match):
@@ -130,11 +130,15 @@ async def fixup_command(update: Update, context: CallbackContext) -> None:
                 fixed_message = only_plain_text(user_message)
                 if fixed_message != user_message:
                     await update.message.reply_text(f'ตรวจพบเป้าหมายแล้วค่ะ : {fixed_message}')
-                    logger.warning(f'ด่านสุดท้าย {update.effective_user.first_name} : {user_message}')
+                    logger.warning(f'รองด่านสุดท้าย {update.effective_user.first_name} : {user_message}')
                 else:   
-                #TODO
-                    await update.message.reply_text(f'ขอโทษค่ะแก้ไขไม่ได้จะบันทึกไว้นะคะ {update.effective_user.first_name}')
-                    logger.warning(f'{update.effective_user.first_name} : {user_message}')
+                    fixed_message = clear_whitespace(user_message)
+                    if fixed_message != user_message:
+                        await update.message.reply_text(f'แบบนี้รึปล่าวคะ? : {fixed_message}')
+                        logger.warning(f'ด่านสุดท้าย {update.effective_user.first_name} : {user_message}')
+                    else:
+                        await update.message.reply_text(f'ขอโทษค่ะแก้ไขไม่ได้จะบันทึกไว้นะคะ {update.effective_user.first_name}')
+                        logger.warning(f'แก้ไขให้ไม่ได้ {update.effective_user.first_name} : {user_message}')
         else:
             await update.message.reply_text('กรุณาใส่ลิงก์ที่ต้องการซ่อมด้วยค่ะ')
     else:
@@ -148,8 +152,20 @@ async def handle_private_message(update: Update, context: CallbackContext) -> No
             await update.message.reply_text(f'ตรวจพบเป้าหมายแล้วค่ะ : {fixed_message}')
             logger.info(f'{update.effective_user.first_name} : {user_message}')
         else:
-            await update.message.reply_text(f'ขอโทษค่ะแก้ไขไม่ได้จะบันทึกไว้นะคะ {update.effective_user.first_name}')
-            logger.warning(f'{update.effective_user.first_name} : {user_message}')
+             #TODO
+                fixed_message = only_plain_text(user_message)
+                if fixed_message != user_message:
+                    await update.message.reply_text(f'ตรวจพบเป้าหมายแล้วค่ะ : {fixed_message}')
+                    logger.warning(f'รองด่านสุดท้าย {update.effective_user.first_name} : {user_message}')
+                else:   
+                #TODO
+                    fixed_message = clear_whitespace(user_message)
+                    if fixed_message != user_message:
+                        await update.message.reply_text(f'แบบนี้รึปล่าวคะ? : {fixed_message}')
+                        logger.warning(f'ด่านสุดท้าย {update.effective_user.first_name} : {user_message}')
+                    else:
+                        await update.message.reply_text(f'ขอโทษค่ะแก้ไขไม่ได้จะบันทึกไว้นะคะ {update.effective_user.first_name}')
+                        logger.warning(f'แก้ไขให้ไม่ได้ {update.effective_user.first_name} : {user_message}')
     else:
         await update.message.reply_text('ข้อความว่างหรือไม่ได้รับการประมวลผล')
         logger.warning('ข้อความว่างหรือไม่ได้รับการประมวลผล')
