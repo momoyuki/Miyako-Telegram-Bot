@@ -1,27 +1,20 @@
-from flask import Flask, request
-import os
-import logging
 import re
 import random
+import logging
 import unicodedata
-import asyncio
+from fastapi import FastAPI, Request
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, CallbackContext
-
-# Initialize Flask app
-app = Flask(__name__)
-
-# Load environment variables
 from dotenv import load_dotenv
+import os
+import asyncio
+
+# โหลด environment variables
 load_dotenv()
 
-TOKEN = os.getenv('TOKEN')
-BOT_NAME = os.getenv('BOT_NAME')
-BOT_OWNER_ID = os.getenv('BOT_OWNER_ID')
-
-# Logging setup
+# ตั้งค่า logging
 logging.basicConfig(
-    level=logging.WARNING,
+    level=logging.INFO,  # เปลี่ยนเป็น INFO เพื่อดู log เพิ่มเติม
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
         logging.StreamHandler(),
@@ -30,13 +23,22 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Initialize the Telegram bot application
+# ดึงค่าคงที่จาก environment variables
+TOKEN = os.getenv('TOKEN')
+BOT_NAME = os.getenv('BOT_NAME')
+BOT_OWNER_ID = os.getenv('BOT_OWNER_ID')
+
+if not TOKEN:
+    logger.error("TOKEN is not set. Please set the TOKEN environment variable.")
+    exit(1)
+
+# สร้าง FastAPI app
+app = FastAPI()
+
+# สร้าง Telegram bot application
 application = ApplicationBuilder().token(TOKEN).build()
 
-# Define your handlers here (same as in your main script)
-# For brevity, I'll assume you have the handlers defined in a separate module
-# but since your code is already provided, I'll include them here
-
+# ฟังก์ชันช่วยเหลือในการแปลงข้อความ
 def full_to_half(text: str) -> str:
     return ''.join([unicodedata.normalize('NFKC', char) if unicodedata.east_asian_width(char) in ('W', 'F') else char for char in text])
 
@@ -81,9 +83,11 @@ def handle_username_tx(match) -> str:
 
 handle_username = handle_username_tx
 
+# คำสั่ง /start
 async def start(update: Update, context: CallbackContext) -> None:
     await update.message.reply_text('RABBIT 1 พร้อมออกปฏิบัติการทุกเมื่อค่ะ')
 
+# คำสั่ง /link
 async def link_command(update: Update, context: CallbackContext) -> None:
     if update.message and update.message.text:
         user_message = update.message.text.split(' ', 1)[-1].strip()
@@ -96,6 +100,7 @@ async def link_command(update: Update, context: CallbackContext) -> None:
     else:
         logger.warning('ข้อความว่างหรือไม่ได้รับการประมวลผล')
 
+# คำสั่ง /fixup
 async def fixup_command(update: Update, context: CallbackContext) -> None:
     if update.message and update.message.text:
         user_message = update.message.text.split(' ', 1)[-1].strip()
@@ -121,6 +126,7 @@ async def fixup_command(update: Update, context: CallbackContext) -> None:
     else:
         await update.message.reply_text('กรุณาใส่ลิงก์ที่ต้องการซ่อมด้วยค่ะ')
 
+# การจัดการข้อความส่วนตัว
 async def handle_private_message(update: Update, context: CallbackContext) -> None:
     if update.message and update.message.text:
         await fixup_command(update, context)
@@ -128,6 +134,7 @@ async def handle_private_message(update: Update, context: CallbackContext) -> No
         await update.message.reply_text('ข้อความว่างหรือไม่ได้รับการประมวลผล')
         logger.warning('ข้อความว่างหรือไม่ได้รับการประมวลผล')
 
+# การจัดการข้อความกลุ่ม
 async def handle_group_message(update: Update, context: CallbackContext) -> None:
     if update.message and update.message.text:
         user_message = update.message.text
@@ -136,6 +143,7 @@ async def handle_group_message(update: Update, context: CallbackContext) -> None
         elif user_message.startswith(('/link', f'/link@{BOT_NAME}')):
             await link_command(update, context)
 
+# คำสั่ง /bug
 async def report_bug_command(update: Update, context: CallbackContext) -> None:
     if update.message and update.message.text:
         user_message = update.message.text.split(' ', 1)[-1].strip()
@@ -145,10 +153,11 @@ async def report_bug_command(update: Update, context: CallbackContext) -> None:
         else:
             await update.message.reply_text('สามารถพิมพ์ รายงานโดยการ กด /bug ตามด้วยข้อความได้เลยค่ะ')
 
+# คำสั่ง /privacy
 async def privacy_command(update: Update, context: CallbackContext) -> None:
     await update.message.reply_text('ระบบจะทำการเก็บข้อมูลการใช้งานไปวิเคราะห์และปรับปรุงให้ดียิ่งขึ้นค่ะ')
 
-# Define your handlers here
+# เพิ่ม handler สำหรับคำสั่งต่าง ๆ
 commands = [
     ("start", start, "เริ่มใช้งาน"),
     ("link", link_command, "ลบช่องว่างระหว่างลิงก์"),
@@ -160,18 +169,37 @@ commands = [
 for command, handler, description in commands:
     application.add_handler(CommandHandler(command, handler))
 
+# เพิ่ม handler สำหรับข้อความ
 application.add_handler(MessageHandler(filters.TEXT & filters.ChatType.PRIVATE, handle_private_message))
 application.add_handler(MessageHandler(filters.TEXT & filters.ChatType.GROUPS, handle_group_message))
 
-@app.route('/webhook', methods=['POST'])
-def webhook():
-    if request.method == "POST":
-        update = Update.de_json(request.get_json(force=True), application.bot)
-        asyncio.create_task(application.process_update(update))
-        return "OK", 200
-    else:
-        return "Method Not Allowed", 405
+# Route สำหรับตรวจสอบเซิร์ฟเวอร์
+@app.get("/")
+async def home():
+    return {"message": "Hello World"}
 
+# Route สำหรับ Webhook
+@app.post("/webhook")
+async def webhook(request: Request):
+    data = await request.json()
+    update = Update.de_json(data, application.bot)
+    await application.process_update(update)
+    return {"status": "ok"}
+
+# Startup event เพื่อเริ่มต้นบอท
+@app.on_event("startup")
+async def startup_event():
+    await application.initialize()
+    await application.start()
+    logger.info("Telegram bot started.")
+
+# Shutdown event เพื่อหยุดบอท
+@app.on_event("shutdown")
+async def shutdown_event():
+    await application.stop()
+    logger.info("Telegram bot stopped.")
+
+# รัน FastAPI ผ่าน Uvicorn
 if __name__ == '__main__':
-    # Start the Flask server
-    application.run_polling()
+    import uvicorn
+    uvicorn.run("webhook_server:app", host='0.0.0.0', port=5000, log_level="info")
