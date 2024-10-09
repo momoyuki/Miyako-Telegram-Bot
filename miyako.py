@@ -11,7 +11,7 @@ load_dotenv()
 
 # Logging setup
 logging.basicConfig(
-    level=logging.INFO,
+    level=logging.WARNING,  # Set to WARNING to reduce log verbosity
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
         logging.StreamHandler(),
