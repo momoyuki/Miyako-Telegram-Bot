@@ -57,6 +57,7 @@ def fixup_link(text: str) -> str:
         text = re.sub(r'(https?://)?(x\.com|twitter\.com)', r'\1vxtwitter.com', text)
 
     text = re.sub(r'(x|twitter|@)(\s*[-:|\s]+\s*)(\w+)', handle_username_tx, text)
+    
     text = re.sub(r'@(\w+)', handle_username, text)
 
     return text
@@ -81,7 +82,12 @@ def handle_username_tx(match) -> str:
     username = match.group(3).strip()
     return f"@{username}" if username.lower() == BOT_NAME.lower() else f"@{username} [{random.choice(['x', 'twitter'])}.com/{username}]"
 
-handle_username = handle_username_tx
+def handle_username(match):
+    username = match.group(1).strip()
+    if username.lower() == BOT_NAME:
+        return f"@{username}"
+    platform = random.choice(["x", "twitter"])
+    return f"@{username} [{platform}.com/{username}]"
 
 # คำสั่ง /start
 async def start(update: Update, context: CallbackContext) -> None:
